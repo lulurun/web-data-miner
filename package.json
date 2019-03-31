@@ -1,0 +1,31 @@
+{
+  "name": "web-data-miner",
+  "version": "1.0.0",
+  "description": "automatically extract listing data from html",
+  "main": "index.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lulurun/web-data-miner.git"
+  },
+  "keywords": [
+    "data mining",
+    "scraping",
+    "scraper",
+    "web data extraction"
+  ],
+  "author": "lulurun@gmail.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/lulurun/web-data-miner/issues"
+  },
+  "homepage": "https://github.com/lulurun/web-data-miner#readme",
+  "devDependencies": {
+    "kick-off-crawling": "^2.1.1"
+  }
+}
