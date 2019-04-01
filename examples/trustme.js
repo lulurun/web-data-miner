@@ -15,7 +15,7 @@
 
 const { Scraper, kickoff } = require('kick-off-crawling');
 const Analysis = require('../src/Analysis');
-const Extractor = require('../src/Extractor');
+const ShapeExtractor = require('../src/ShapeExtractor');
 
 class DataListScraper extends Scraper {
   scrape($) {
@@ -23,7 +23,7 @@ class DataListScraper extends Scraper {
     const [result] = analysis.suggest(1);
     console.log(result.els.length, result.path);
 
-    const extractor = new Extractor();
+    const extractor = new ShapeExtractor();
     extractor.getTable(result.els);
   }
 }

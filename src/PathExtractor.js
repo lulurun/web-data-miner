@@ -25,7 +25,7 @@ function getText(el) {
   return text;
 }
 
-class Extractor {
+class PathExtractor {
   constructor() {
     this.fields = {};
     this.records = [];
