@@ -1,4 +1,5 @@
 const ignoreTagList = [
+  'script',
   'header',
   'footer',
   'select',

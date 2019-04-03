@@ -1,77 +1,82 @@
 const { IGNORE_TAGS, WEIGHTS } = require('./Constants');
+const { getAttr } = require('./ElementUtils');
 
-function getAttrClass($) {
-  if (!$.attribs || !$.attribs.class) return '';
-  return `.${$.attribs.class}`;
+function getKey(el) {
+  return `/${el.name}.${getAttr(el, 'class')}.${getAttr(el, 'style')}`;
 }
 
-function getAttrStyle($) {
-  if (!$.attribs || !$.attribs.style) return '';
-  return `.${$.attribs.style}`;
+function getDisplay(el) {
+  return `/${el.name}#${getAttr(el, 'id')}.${getAttr(el, 'class')}`;
 }
 
-function getAttrId($) {
-  if (!$.attribs || !$.attribs.id) return '';
-  return `#${$.attribs.id}`;
-}
-
-function getKeyStr($array) {
-  return $array.map(el => `/${el.name}${getAttrClass(el)}(${getAttrStyle(el)})`).join('');
-}
-
-function getDisplayStr($array) {
-  return $array.map(el => `/${el.name}${getAttrId(el)}${getAttrClass(el)}`).join('');
+function isRoot(el) {
+  return el.__wdm.depth === 0;
 }
 
 class Analysis {
-  constructor($, maxDepth = 15) {
-    this.maxDepth = maxDepth;
-    this.stack = [];
+  constructor($) {
     this.histogram = {};
-    this.build($);
+    $.__wdm = {
+      depth: 0,
+      key: getKey($),
+      display: getDisplay($),
+    };
+    this.traverse($);
   }
 
-  update($array) {
-    for (let i = 1; i <= $array.length; i += 1) {
-      const $prefixArray = $array.slice(0, i);
-      const str = getKeyStr($prefixArray);
-      if (!(str in this.histogram)) {
-        this.histogram[str] = {
-          display: getDisplayStr($prefixArray),
-          cnt: 0,
-          len: i,
-          els: [],
-        };
-      }
-      this.histogram[str].cnt += 1;
+  updateHistogram(el) {
+    if (!(el.__wdm.key in this.histogram)) {
+      this.histogram[el.__wdm.key] = {
+        display: el.__wdm.display,
+        depth: el.__wdm.depth,
+        cnt: 0,
+        els: [],
+      };
+    }
+    this.histogram[el.__wdm.key].els.push(el);
+    this.histogram[el.__wdm.key].cnt += 1;
 
-      if (i === $array.length) {
-        this.histogram[str].els.push($array[$array.length - 1]);
-      }
+    let p = el.parent;
+    while (!isRoot(p)) {
+      this.histogram[p.__wdm.key].cnt += 1;
+      p = p.parent;
     }
   }
 
-  build($, depth = 0) {
-    this.update(this.stack);
+  traverse($) {
+    const stack = [$];
+    let isFirst = true;
+    while (stack.length) {
+      const el = stack.pop();
+      if (el.type !== 'tag') continue;
+      if (el.name in IGNORE_TAGS) continue;
 
-    if (!$.children || $.children.length === 0) return;
-    if (depth === this.maxDepth) return;
-    $.children.forEach((x) => {
-      if (x.type === 'text') return;
-      if (x.name in IGNORE_TAGS) return;
-      this.stack.push(x);
-      this.build(x, depth + 1);
-      this.stack.pop();
-    });
+      if (isFirst) {
+        isFirst = false;
+      } else {
+        el.__wdm = {
+          depth: el.parent.__wdm.depth + 1,
+          key: `${el.parent.__wdm.key}${getKey(el)}`,
+          display: `${el.parent.__wdm.display}${getDisplay(el)}`,
+        };
+        this.updateHistogram(el);
+      }
+
+      if (el.children) {
+        el.children.forEach((x) => {  
+          stack.push(x);
+        });
+      }
+    }
   }
 
   suggest(top = 10) {
     const results = Object.values(this.histogram).map(v => ({
       path: v.display,
-      score: v.cnt * WEIGHTS.MAGIC_NUMBERS_2[v.len - 1],
+      score: v.cnt * WEIGHTS.MAGIC_NUMBERS_2[v.depth],
       els: v.els,
       cnt: v.cnt,
-      len: v.len,
+      depth: v.depth,
     }));
 
     return results.sort((a, b) => {
@@ -79,21 +84,6 @@ class Analysis {
       if (a.score > b.score) return -1;
       return 0;
     }).slice(0, top);
-  }
-
-  scrape(index = 0) {
-    const results = this.suggest(index + 1);
-    console.log(results);
-    results[0].els.forEach((x) => {
-      console.log(x);
-    });
-  }
-
-  dump() {
-    Object.keys(this.histogram).sort().forEach((k) => {
-      const v = this.histogram[k];
-      console.log(k, v.display);
-    });
   }
 }
 

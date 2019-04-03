@@ -1,60 +1,56 @@
 const { IGNORE_TAGS } = require('./Constants');
-const { getHref, getSrc, getText, isTextElement } = require('./Utils');
+const { getAttr, getText, isText } = require('./ElementUtils');
 
 class ShapeExtractor {
-  constructor() {
-    this.fields = {};
+  constructor(elementList) {
+    this.key2Field = {};
     this.records = [];
     this.seq = 0;
-  }
 
-  getField(key) {
-    if (!(key in this.fields)) {
-      this.seq += 1;
-      const field = `Field${this.seq}`;
-      this.fields[key] = field;
-    }
-    return this.fields[key];
-  }
-
-  getTable(elList) {
-    elList.slice(0, 5).forEach((x) => {
-      console.log('#################');
-      this.parse([], 0, x);
-      console.log();
-      console.log();
+    elementList.slice(0, 5).forEach((el) => {
+      const record = {};
+      this._parse(el, record);
+      this.records.push(record);
     });
   }
 
-  produce(key, val) {
-    const field = this.getField(key);
-    console.log(field, val);
+  getFields() {
+    return Object.entries(this.key2Field);
   }
 
-  parse(keys, idx, el) {
-    let key = keys.join('/');
-  
-    if (isTextElement(el)) {
-      this.produce(key + `/${el.name}`, getText(el));
-    } else if (el.type === 'tag') {
-      if (el.name === 'a') {
-        key += '/href';
-        this.produce(key, getHref(el));
-      } else if (el.name === 'img') {
-        key += '/src';
-        this.produce(key, getSrc(el));
-      }
+  getData() {
+    return this.records;
+  }
 
-      if (el.children) {
-        el.children.forEach((x, i) => {
-          keys.push(`${el.name}${idx}`);
-          this.parse(keys, i, x);
-          keys.pop();
-        });
-      }
+  _getField(key) {
+    if (!(key in this.key2Field)) {
+      this.seq += 1;
+      this.key2Field[key] = `Field${this.seq}`;
+    }
+    return this.key2Field[key];
+  }
 
-    } else if (el.type === 'text') {
-      this.produce(key, el.data);
+  _parse(el, record, keys = [], idx = 0) {
+    const key = keys.join('/');
+    if (el.type !== 'tag') return;
+
+    if (el.name === 'a') {
+      const field = this._getField(`${key}/href`);
+      record[field] = getAttr(el, 'href');
+    } else if (el.name === 'img') {
+      const field = this._getField(`${key}/src`);
+      record[field] = getAttr(el, 'src');
+    }
+
+    if (isText(el)) {
+      const field = this._getField(`${key}/${el.name}`);
+      record[field] = getText(el);
+    } else if (el.children) {
+      el.children.forEach((x, i) => {
+        keys.push(`${el.name}${idx}`);
+        this._parse(x, record, keys, i);
+        keys.pop();
+      });
     }
   }
 }

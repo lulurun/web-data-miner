@@ -26,6 +26,9 @@
   },
   "homepage": "https://github.com/lulurun/web-data-miner#readme",
   "devDependencies": {
-    "kick-off-crawling": "^2.1.1"
+    "cheerio": "^1.0.0-rc.2",
+    "html-minifier": "^4.0.0",
+    "request": "^2.88.0",
+    "request-promise": "^4.2.4"
   }
 }

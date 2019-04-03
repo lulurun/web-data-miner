@@ -13,24 +13,51 @@
  * 'https://www.amazon.co.jp/b/?node=2386870051'
  */
 
-const { Scraper, kickoff } = require('kick-off-crawling');
+const rp = require('request-promise');
+const cheerio = require('cheerio');
+const { minify } = require('html-minifier');
 const Analysis = require('../src/Analysis');
 const ShapeExtractor = require('../src/ShapeExtractor');
 
-class DataListScraper extends Scraper {
-  scrape($) {
-    const analysis = new Analysis($('body').get(0), 25);
-    const [result] = analysis.suggest(1);
-    console.log(result.els.length, result.path);
-
-    const extractor = new ShapeExtractor();
-    extractor.getTable(result.els);
-  }
-}
-
 const url = process.argv[2];
 if (!url) {
-  throw new Error('Usage: node ${process.argv[1]} $URL');
+  throw new Error('Usage: node suggest.js $URL');
 }
 
-kickoff(url, new DataListScraper(), { headless: true, minify: true });
+(async (url) => {
+  const html = await rp.get(url);
+  const $ = cheerio.load(minify(html, {
+    collapseWhitespace: true,
+    removeComments: true,
+    removeEmptyElements: true,
+  }));
+
+  const beforeAnalysis = process.hrtime()
+  const analysis = new Analysis($('body').get(0));
+  const d1 = process.hrtime(beforeAnalysis);
+  console.log('Analysis time: %ds %dms', d1[0], d1[1] / 1000000);
+
+  const [result] = analysis.suggest(1);
+  console.log('Repeating pattern:', result.els.length, result.path);
+
+  const beforeExtraction = process.hrtime()
+  const extractor = new ShapeExtractor(result.els);
+  const d2 = process.hrtime(beforeExtraction);
+  console.log('Extraction time: %ds %dms', d2[0], d2[1] / 1000000);
+
+  const fields = extractor.getFields();
+  console.log('# Fields:');
+  fields.forEach(([key, field]) => {
+    console.log(field, key);
+  });
+  console.log();
+  const data = extractor.getData();
+  console.log('# Data:');
+  data.forEach((x, i) => {
+    console.log(`### ${i} ###`);
+    Object.keys(x).sort().forEach((k) => {
+      console.log(k, x[k]);
+    });
+    console.log();
+  });
+})(url);

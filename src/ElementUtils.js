@@ -1,12 +1,8 @@
-exports.getHref = (el) => {
-  return (el.attribs && el.attribs.href) || '';
+exports.getAttr = (el, attr) => {
+  return (el.attribs && el.attribs[attr]) || '';
 };
 
-exports.getSrc = (el) => {
-  return (el.attribs && el.attribs.src) || '';
-}
-
-exports.isTextElement = (el) => {
+exports.isText = (el) => {
   if (el.type === 'text') return true;
   if (el.children) {
     for (let i = 0; i < el.children.length; i += 1) {
