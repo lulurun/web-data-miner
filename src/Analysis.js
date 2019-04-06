@@ -2,11 +2,12 @@ const { IGNORE_TAGS, WEIGHTS } = require('./Constants');
 const { getAttr } = require('./ElementUtils');
 
 function getKey(el) {
-  return `/${el.name}.${getAttr(el, 'class')}.${getAttr(el, 'style')}`;
+  const parentIndex = el.parent && el.parent.__wdm && el.parent.__wdm.index || 0;
+  return `${parentIndex}${el.name}.${getAttr(el, 'class')}.${getAttr(el, 'style')}`;
 }
 
 function getDisplay(el) {
-  return `/${el.name}#${getAttr(el, 'id')}.${getAttr(el, 'class')}`;
+  return `${el.name}#${getAttr(el, 'id')}.${getAttr(el, 'class')}`;
 }
 
 function isRoot(el) {
@@ -18,8 +19,9 @@ class Analysis {
     this.histogram = {};
     $.__wdm = {
       depth: 0,
-      key: getKey($),
-      display: getDisplay($),
+      key: `/${getKey($)}`,
+      display: `/${getDisplay($)}`,
+      index: 0,
     };
     this.traverse($);
   }
@@ -43,28 +45,30 @@ class Analysis {
     }
   }
 
+  process(el, index) {
+    if (el.type !== 'tag') return false;
+    if (el.name in IGNORE_TAGS) return false;
+
+    el.__wdm = {
+      depth: el.parent.__wdm.depth + 1,
+      key: `${el.parent.__wdm.key}/${getKey(el)}`,
+      display: `${el.parent.__wdm.display}/${getDisplay(el)}`,
+      index,
+    };
+    this.updateHistogram(el);
+
+    return true;
+  }
+
   traverse($) {
     const stack = [$];
-    let isFirst = true;
     while (stack.length) {
       const el = stack.pop();
-      if (el.type !== 'tag') continue;
-      if (el.name in IGNORE_TAGS) continue;
-
-      if (isFirst) {
-        isFirst = false;
-      } else {
-        el.__wdm = {
-          depth: el.parent.__wdm.depth + 1,
-          key: `${el.parent.__wdm.key}${getKey(el)}`,
-          display: `${el.parent.__wdm.display}${getDisplay(el)}`,
-        };
-        this.updateHistogram(el);
-      }
-
       if (el.children) {
-        el.children.forEach((x) => {  
-          stack.push(x);
+        el.children.forEach((x, i) => {
+          if (this.process(x, i)) {
+            stack.push(x);
+          }
         });
       }
     }
@@ -73,7 +77,7 @@ class Analysis {
   suggest(top = 10) {
     const results = Object.values(this.histogram).map(v => ({
       path: v.display,
-      score: v.cnt * WEIGHTS.MAGIC_NUMBERS_2[v.depth],
+      score: v.cnt * WEIGHTS.CUMULATIVE_PRIMES[v.depth],
       els: v.els,
       cnt: v.cnt,
       depth: v.depth,

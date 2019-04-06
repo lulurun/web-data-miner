@@ -3,15 +3,12 @@ const ignoreTagList = [
   'header',
   'footer',
   'select',
-  'form',
   'em',
   'strong',
   'b',
   'hr',
   'br',
-  'wbr',
   'i',
-  'p',
 ];
 
 const ignoreTagMap = {};
@@ -22,13 +19,13 @@ ignoreTagList.forEach(k => {
 exports.IGNORE_TAGS = ignoreTagMap;
 
 exports.WEIGHTS = {
-  MAGIC_NUMBERS_1: [ // guess what is it ? :)
+  FIBONACCI: [
     1, 1, 2, 3, 5, 8,
     13, 21, 34, 55, 89,
     144, 233, 377, 610,
     987,
   ],
-  MAGIC_NUMBERS_2: [ // guess what is it ? :)
+  CUMULATIVE_PRIMES: [
     2, 5, 10, 17, 28,
     41, 58, 77, 100, 129,
     160, 197, 238, 281, 328,
