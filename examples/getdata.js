@@ -11,11 +11,12 @@
  * 'https://www.google.com/search?q=github'
  * 'https://www.amazon.co.jp/b/?node=2386870051'
  */
-const rp = require('request-promise');
+
+const puppeteer = require('puppeteer');
 const cheerio = require('cheerio');
 const { minify } = require('html-minifier');
 const minimist = require('minimist');
-const Analysis = require('../src/Analysis');
+const DataMiner = require('../index');
 const ShapeExtractor = require('../src/ShapeExtractor');
 
 const args = minimist(process.argv.slice(2));
@@ -28,8 +29,28 @@ if (!url) {
 
 const suggest = args.trustme ? 1 : (args.suggest || 5);
 
+function getAttr(el, attr) {
+  return (el.attribs && el.attribs[attr]) || '';
+};
+
+function getPath(el) {
+  let p = el;
+  let path = '';
+  while (p) {
+    path = `/${p.name}${getAttr(p, 'id')}${path}`;
+    p = p.parent;
+  }
+  return path;
+}
+
 (async (url) => {
-  const html = await rp.get(url);
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  await page.goto(url);
+  const html = await page.content();
+
+  browser.close();
+
   const $ = cheerio.load(minify(html, {
     collapseWhitespace: true,
     removeComments: true,
@@ -38,25 +59,23 @@ const suggest = args.trustme ? 1 : (args.suggest || 5);
   }));
 
   const beforeAnalysis = process.hrtime()
-  const analysis = new Analysis($('body').get(0));
+  const miner = new DataMiner($('body').get(0));
   const d1 = process.hrtime(beforeAnalysis);
   console.log('Analysis Time: %ds %dms', d1[0], d1[1] / 1000000);
 
-  const results = analysis.suggest(suggest);
+  const candidates = miner.candidates(suggest);
   console.log('Repeating Pattern:');
-  results.forEach((r) => {
-    console.log(r.els.length, r.path);
+  candidates.forEach((r) => {
+    console.log(r.score, r.els.length, getPath(r.els[0]), r.cnt, r.depth);
   });
 
   if (! args.trustme) return;
 
-  const listingData = results[0];
   const beforeExtraction = process.hrtime()
-  const extractor = new ShapeExtractor(listingData.els);
+  const [fields, data] = miner.extract();
   const d2 = process.hrtime(beforeExtraction);
   console.log('Extraction Time: %ds %dms', d2[0], d2[1] / 1000000);
 
-  const fields = extractor.getFields();
   const numFields = Object.entries(fields).length;
   console.log('# Fields:');
   for (let i = 0; i < numFields; i += 1) {
@@ -64,7 +83,6 @@ const suggest = args.trustme ? 1 : (args.suggest || 5);
   }
   console.log();
 
-  const data = extractor.getData();
   console.log('# Data:');
   data.forEach((x, i) => {
     console.log(`### ${i} ###`);

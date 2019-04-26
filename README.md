@@ -1,4 +1,11 @@
-under construction
+The web-data-minier is aiming to build a general web scraper.
+
+It can detect if a web page contains listing data (like google search result) or a single data (like a wikipedia article) and exrtact data automatically.
+
+It is written in pure javascript with no dependencies, and the algorithm can be easily implemented in any language.
+
+
+To be continued ...
 
 <!--
 /* Example of the calculation
